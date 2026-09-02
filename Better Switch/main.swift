@@ -161,7 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       }
 
       self.logger.info("Activated: \(appName, privacy: .public) pid=\(pid, privacy: .public)")
-      self.windowRestorer.restoreMinimizedWindowIfNeeded(for: currentApplication)
+      self.windowRestorer.restoreWindowIfNeeded(for: currentApplication)
     }
 
     pendingActivationCheck = workItem

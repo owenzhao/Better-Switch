@@ -5,7 +5,7 @@ import OSLog
 struct WindowRestorer {
   private let logger = Logger(subsystem: "com.parussoft.Better-Switch", category: "WindowRestore")
 
-  func restoreMinimizedWindowIfNeeded(for application: NSRunningApplication) {
+  func restoreWindowIfNeeded(for application: NSRunningApplication) {
     let pid = application.processIdentifier
     let appName = application.localizedName ?? "Unknown"
 
@@ -17,6 +17,11 @@ struct WindowRestorer {
     let appElement = AXUIElementCreateApplication(pid)
     guard let windows = copyAttribute(appElement, kAXWindowsAttribute as CFString) as? [AXUIElement] else {
       logger.info("No AX windows for \(appName, privacy: .public). No action")
+      return
+    }
+
+    guard !windows.isEmpty else {
+      reopen(application)
       return
     }
 
@@ -74,6 +79,38 @@ struct WindowRestorer {
       logger.error(
         "Unminimized but failed to raise \(title, privacy: .public) for \(appName, privacy: .public): AX error \(raiseResult.rawValue, privacy: .public)"
       )
+    }
+  }
+
+  private func reopen(_ application: NSRunningApplication) {
+    let pid = application.processIdentifier
+    let appName = application.localizedName ?? "Unknown"
+
+    guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+      logger.info("Skipping reopen for \(appName, privacy: .public): no longer frontmost")
+      return
+    }
+    guard let bundleURL = application.bundleURL else {
+      logger.error("Cannot reopen \(appName, privacy: .public): bundle URL unavailable")
+      return
+    }
+
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.activates = false
+    configuration.createsNewApplicationInstance = false
+    configuration.addsToRecentItems = false
+
+    NSWorkspace.shared.openApplication(
+      at: bundleURL,
+      configuration: configuration
+    ) { _, error in
+      if let error {
+        logger.error(
+          "Failed to request reopen for \(appName, privacy: .public): \(error.localizedDescription, privacy: .public)"
+        )
+      } else {
+        logger.info("Requested reopen for \(appName, privacy: .public): AX window list was empty")
+      }
     }
   }
 
