@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DC2979B9304818D700418088 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DC2979B8304818D700418088 /* Media.xcassets */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B50000000000000000000001 /* Better Switch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Better Switch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC2979B8304818D700418088 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +37,7 @@
 		B50000000000000000000004 = {
 			isa = PBXGroup;
 			children = (
+				DC2979B8304818D700418088 /* Media.xcassets */,
 				B50000000000000000000002 /* Better Switch */,
 				B50000000000000000000005 /* Products */,
 			);
@@ -109,6 +115,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC2979B9304818D700418088 /* Media.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,20 +262,20 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B5000000000000000000000B /* Build configuration list for PBXProject "Better Switch" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B5000000000000000000000C /* Debug */,
-				B5000000000000000000000D /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		B50000000000000000000007 /* Build configuration list for PBXNativeTarget "Better Switch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B5000000000000000000000E /* Debug */,
 				B5000000000000000000000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B5000000000000000000000B /* Build configuration list for PBXProject "Better Switch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5000000000000000000000C /* Debug */,
+				B5000000000000000000000D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

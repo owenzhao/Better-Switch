@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <title>Better Switch</title>
+  <desc>Two overlapping application windows connected by a switching arrow.</desc>
+
+  <defs>
+    <linearGradient id="background" x1="164" y1="112" x2="860" y2="912" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6B5CFF"/>
+      <stop offset="0.48" stop-color="#3D57E8"/>
+      <stop offset="1" stop-color="#18A6D9"/>
+    </linearGradient>
+    <linearGradient id="frontWindow" x1="353" y1="388" x2="750" y2="773" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCEBFF"/>
+    </linearGradient>
+    <linearGradient id="switchArrow" x1="459" y1="488" x2="665" y2="668" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5E5AF7"/>
+      <stop offset="1" stop-color="#168FCB"/>
+    </linearGradient>
+    <filter id="iconShadow" x="74" y="72" width="876" height="910" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="28" flood-color="#14245A" flood-opacity="0.3"/>
+    </filter>
+    <filter id="windowShadow" x="187" y="196" width="690" height="651" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#15275D" flood-opacity="0.26"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#iconShadow)">
+    <path d="M512 64C690 64 806 74 870 138C934 202 944 318 944 496V528C944 706 934 822 870 886C806 950 690 960 512 960C334 960 218 950 154 886C90 822 80 706 80 528V496C80 318 90 202 154 138C218 74 334 64 512 64Z" fill="url(#background)"/>
+  </g>
+
+  <path d="M183 290C183 244 220 207 266 207H657C703 207 740 244 740 290V550C740 596 703 633 657 633H266C220 633 183 596 183 550V290Z" fill="#243DB3" fill-opacity="0.52" stroke="#C5D8FF" stroke-width="18"/>
+  <path d="M192 315H731" stroke="#C5D8FF" stroke-width="18"/>
+  <circle cx="237" cy="262" r="13" fill="#FF97A5"/>
+  <circle cx="280" cy="262" r="13" fill="#FFD477"/>
+  <circle cx="323" cy="262" r="13" fill="#83E2B0"/>
+
+  <g filter="url(#windowShadow)">
+    <path d="M284 407C284 361 321 324 367 324H758C804 324 841 361 841 407V667C841 713 804 750 758 750H367C321 750 284 713 284 667V407Z" fill="url(#frontWindow)" stroke="#FFFFFF" stroke-width="18"/>
+    <path d="M293 432H832" stroke="#A8C3EE" stroke-width="18"/>
+    <circle cx="338" cy="379" r="13" fill="#FF7185"/>
+    <circle cx="381" cy="379" r="13" fill="#FFC44F"/>
+    <circle cx="424" cy="379" r="13" fill="#42CD89"/>
+  </g>
+
+  <path d="M430 548C457 508 502 484 550 484H636L606 454C593 441 593 420 606 407C619 394 640 394 653 407L739 493C752 506 752 527 739 540L653 626C640 639 619 639 606 626C593 613 593 592 606 579L636 549H550C524 549 500 562 486 583C476 599 455 604 439 594C423 584 419 563 430 548Z" fill="url(#switchArrow)"/>
+  <path d="M566 644C539 684 494 708 446 708H388L418 738C431 751 431 772 418 785C405 798 384 798 371 785L285 699C272 686 272 665 285 652L371 566C384 553 405 553 418 566C431 579 431 600 418 613L388 643H446C472 643 496 630 510 609C520 593 541 588 557 598C573 608 577 629 566 644Z" fill="url(#switchArrow)"/>
+
+  <path d="M512 84C686 84 795 94 856 152" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="12" stroke-linecap="round"/>
+</svg>

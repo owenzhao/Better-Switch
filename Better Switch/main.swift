@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import OSLog
+import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   private static let enabledKey = "betterSwitchEnabled"
@@ -10,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   private var statusItem: NSStatusItem!
   private var enabledItem: NSMenuItem!
+  private var launchAtLoginItem: NSMenuItem!
   private var accessibilityItem: NSMenuItem!
   private var grantAccessibilityItem: NSMenuItem!
   private var workspaceObserver: NSObjectProtocol?
@@ -52,12 +54,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let menu = NSMenu()
     menu.delegate = self
 
+    let aboutItem = menu.addItem(
+      withTitle: "About Better Switch",
+      action: #selector(showAbout),
+      keyEquivalent: ""
+    )
+    aboutItem.target = self
+
+    menu.addItem(.separator())
+
     enabledItem = menu.addItem(
       withTitle: "Enabled",
       action: #selector(toggleEnabled),
       keyEquivalent: ""
     )
     enabledItem.target = self
+
+    launchAtLoginItem = menu.addItem(
+      withTitle: "Launch at Login",
+      action: #selector(toggleLaunchAtLogin),
+      keyEquivalent: ""
+    )
+    launchAtLoginItem.target = self
+
+    menu.addItem(.separator())
 
     accessibilityItem = menu.addItem(withTitle: "", action: nil, keyEquivalent: "")
     accessibilityItem.isEnabled = false
@@ -82,8 +102,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     refreshMenu()
   }
 
+  @objc private func showAbout() {
+    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+    if let iconURL = Bundle.main.url(forResource: "Better Switch", withExtension: "svg"),
+       let icon = NSImage(contentsOf: iconURL)
+    {
+      options[.applicationIcon] = icon
+    }
+
+    NSApp.orderFrontStandardAboutPanel(options: options)
+    NSApp.activate(ignoringOtherApps: true)
+  }
+
   private func refreshMenu() {
     enabledItem.state = isEnabled ? .on : .off
+
+    switch SMAppService.mainApp.status {
+    case .enabled:
+      launchAtLoginItem.title = "Launch at Login"
+      launchAtLoginItem.state = .on
+    case .requiresApproval:
+      launchAtLoginItem.title = "Launch at Login (Approval Required)"
+      launchAtLoginItem.state = .mixed
+    case .notRegistered, .notFound:
+      launchAtLoginItem.title = "Launch at Login"
+      launchAtLoginItem.state = .off
+    @unknown default:
+      launchAtLoginItem.title = "Launch at Login"
+      launchAtLoginItem.state = .off
+    }
 
     let isTrusted = AXIsProcessTrusted()
     accessibilityItem.title = isTrusted
@@ -101,6 +148,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     refreshMenu()
     logger.info("Enabled changed to \(self.isEnabled, privacy: .public)")
+  }
+
+  @objc private func toggleLaunchAtLogin() {
+    let service = SMAppService.mainApp
+
+    do {
+      switch service.status {
+      case .enabled:
+        try service.unregister()
+        logger.info("Launch at login disabled")
+      case .requiresApproval:
+        SMAppService.openSystemSettingsLoginItems()
+        logger.info("Opened Login Items settings for approval")
+      case .notRegistered, .notFound:
+        try service.register()
+        logger.info("Launch at login registration requested")
+        if service.status == .requiresApproval {
+          SMAppService.openSystemSettingsLoginItems()
+        }
+      @unknown default:
+        logger.error("Cannot change launch at login: unknown service status")
+      }
+    } catch {
+      logger.error(
+        "Failed to change launch at login: \(error.localizedDescription, privacy: .public)"
+      )
+    }
+
+    refreshMenu()
   }
 
   @objc private func requestAccessibilityPermission() {
