@@ -4,6 +4,10 @@ Better Switch is a macOS menu bar utility that brings back a minimized or closed
 
 When the activated app has no visible window, Better Switch restores and raises one of its minimized standard windows. If the app has no windows at all, it requests that macOS reopen the app. It leaves apps alone when a usable window is already visible or their window state cannot be safely determined.
 
+## Demo
+
+[Watch the demo video (MP4, 4.1 MB)](https://github.com/owenzhao/Better-Switch/releases/download/v0.1.0/Better-Switch-0.1.0-demo.mp4)
+
 ## Requirements
 
 - macOS 15 or later
