@@ -211,32 +211,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     let pid = application.processIdentifier
-    guard pid != ProcessInfo.processInfo.processIdentifier,
-          application.activationPolicy == .regular
-    else {
+    guard pid != ProcessInfo.processInfo.processIdentifier else {
       return
     }
 
     pendingActivationCheck?.cancel()
 
     let appName = application.localizedName ?? "Unknown"
+    let bundleIdentifier = application.bundleIdentifier
+    let bundleURL = application.bundleURL
+    logger.info(
+      "Activation notification: \(appName, privacy: .public) pid=\(pid, privacy: .public) policy=\(application.activationPolicy.rawValue, privacy: .public)"
+    )
+    guard application.activationPolicy != .prohibited else {
+      logger.debug("Skipping \(appName, privacy: .public): prohibited activation policy")
+      return
+    }
+
     let workItem = DispatchWorkItem { [weak self] in
       guard let self, self.isEnabled else { return }
-      guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
-        self.logger.debug("Skipping \(appName, privacy: .public): no longer frontmost")
+      guard let currentApplication = NSWorkspace.shared.frontmostApplication else {
         return
+      }
+      if pid > 0 {
+        guard currentApplication.processIdentifier == pid else {
+          self.logger.debug("Skipping \(appName, privacy: .public): no longer frontmost")
+          return
+        }
+      } else {
+        guard let bundleIdentifier,
+              currentApplication.bundleIdentifier == bundleIdentifier,
+              bundleURL == nil || currentApplication.bundleURL == bundleURL
+        else {
+          self.logger.debug("Skipping \(appName, privacy: .public): no matching frontmost application")
+          return
+        }
       }
       guard AXIsProcessTrusted() else {
         self.logger.debug("Skipping \(appName, privacy: .public): Accessibility not granted")
         return
       }
-      guard let currentApplication = NSRunningApplication(processIdentifier: pid),
-            currentApplication.activationPolicy == .regular
-      else {
+      guard currentApplication.activationPolicy != .prohibited else {
         return
       }
 
-      self.logger.info("Activated: \(appName, privacy: .public) pid=\(pid, privacy: .public)")
+      let currentAppName = currentApplication.localizedName ?? appName
+      self.logger.info(
+        "Activated: \(currentAppName, privacy: .public) pid=\(currentApplication.processIdentifier, privacy: .public)"
+      )
       self.windowRestorer.restoreWindowIfNeeded(for: currentApplication)
     }
 
