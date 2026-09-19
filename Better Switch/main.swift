@@ -2,12 +2,18 @@ import AppKit
 import ApplicationServices
 import OSLog
 import ServiceManagement
+@preconcurrency import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
   private static let enabledKey = "betterSwitchEnabled"
 
   private let logger = Logger(subsystem: "com.parussoft.Better-Switch", category: "App")
   private let windowRestorer = WindowRestorer()
+  private let updaterController = SPUStandardUpdaterController(
+    startingUpdater: true,
+    updaterDelegate: nil,
+    userDriverDelegate: nil
+  )
 
   private var statusItem: NSStatusItem!
   private var enabledItem: NSMenuItem!
@@ -60,6 +66,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       keyEquivalent: ""
     )
     aboutItem.target = self
+
+    menu.addItem(.separator())
+
+    let checkForUpdatesItem = menu.addItem(
+      withTitle: "Check for Updates…",
+      action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+      keyEquivalent: ""
+    )
+    checkForUpdatesItem.target = updaterController
 
     menu.addItem(.separator())
 

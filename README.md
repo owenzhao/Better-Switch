@@ -21,6 +21,16 @@ When the activated app has no visible window, Better Switch restores and raises 
 
 The menu bar item also lets you temporarily disable the behavior and enable launch at login.
 
+## What's New in 0.2.0
+
+- Restores special windows exposed through an app's **Window** menu before falling back to reopening the app.
+- Rechecks the frontmost application after switching, making restoration more reliable for apps with unusual activation behavior.
+- Checks for updates automatically and supports signed in-app upgrades through Sparkle.
+
+## Updates
+
+Better Switch uses Sparkle to check the update feed automatically and provides **Check for Updates…** in the menu bar item. The feed is [appcast.xml](appcast.xml); published archives must be signed with the Sparkle Ed25519 key kept in the local keychain.
+
 ## Build
 
 Open `Better Switch.xcodeproj` in Xcode and run the **Better Switch** scheme.
