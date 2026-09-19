@@ -16,25 +16,25 @@ struct WindowRestorer {
 
     let appElement = AXUIElementCreateApplication(pid)
     guard let windows = copyAttribute(appElement, kAXWindowsAttribute as CFString) as? [AXUIElement] else {
-      logger.info("No AX windows for \(appName, privacy: .public). No action")
+      restoreFromWindowMenuOrReopen(application, appElement: appElement)
       return
     }
 
     guard !windows.isEmpty else {
-      reopen(application)
+      restoreFromWindowMenuOrReopen(application, appElement: appElement)
       return
     }
 
     let candidateWindows = windows.filter(isWindow)
     guard !candidateWindows.isEmpty else {
-      logger.info("No AXWindow candidates for \(appName, privacy: .public). No action")
+      restoreFromWindowMenuOrReopen(application, appElement: appElement)
       return
     }
 
     var minimizedWindows: [AXUIElement] = []
     for window in candidateWindows {
       guard let isMinimized = boolAttribute(window, kAXMinimizedAttribute as CFString) else {
-        logger.info("Could not verify every AX window for \(appName, privacy: .public). No action")
+        restoreFromWindowMenuOrReopen(application, appElement: appElement)
         return
       }
       guard isMinimized else {
@@ -82,6 +82,54 @@ struct WindowRestorer {
     }
   }
 
+  private func restoreFromWindowMenuOrReopen(
+    _ application: NSRunningApplication,
+    appElement: AXUIElement
+  ) {
+    if restoreFromWindowMenu(appElement, appName: application.localizedName ?? "Unknown") {
+      return
+    }
+    reopen(application)
+  }
+
+  private func restoreFromWindowMenu(_ appElement: AXUIElement, appName: String) -> Bool {
+    guard let menuBar = elementAttribute(appElement, kAXMenuBarAttribute as CFString),
+          let menuBarItems = copyAttribute(menuBar, kAXChildrenAttribute as CFString) as? [AXUIElement],
+          let windowMenu = menuBarItems.first(where: {
+            stringAttribute($0, kAXTitleAttribute as CFString) == "Window"
+          }),
+          let menu = (copyAttribute(windowMenu, kAXChildrenAttribute as CFString) as? [AXUIElement])?
+            .first(where: { stringAttribute($0, kAXRoleAttribute as CFString) == kAXMenuRole as String }),
+          let menuItems = copyAttribute(menu, kAXChildrenAttribute as CFString) as? [AXUIElement],
+          let separatorIndex = menuItems.lastIndex(where: {
+            stringAttribute($0, kAXRoleAttribute as CFString) == "AXSeparator"
+          })
+    else {
+      logger.info("No selectable Window menu item for \(appName, privacy: .public)")
+      return false
+    }
+
+    for menuItem in menuItems[menuItems.index(after: separatorIndex)...] {
+      let title = stringAttribute(menuItem, kAXTitleAttribute as CFString) ?? ""
+      let commandCharacter = stringAttribute(menuItem, kAXMenuItemCmdCharAttribute as CFString) ?? ""
+      guard !title.isEmpty,
+            commandCharacter.isEmpty,
+            boolAttribute(menuItem, kAXEnabledAttribute as CFString) == true
+      else {
+        continue
+      }
+
+      let result = AXUIElementPerformAction(menuItem, kAXPressAction as CFString)
+      if result == .success {
+        logger.info("Restored \(title, privacy: .public) for \(appName, privacy: .public) from the Window menu")
+        return true
+      }
+      logger.error("Failed to select \(title, privacy: .public) from the Window menu for \(appName, privacy: .public): AX error \(result.rawValue, privacy: .public)")
+    }
+
+    return false
+  }
+
   private func reopen(_ application: NSRunningApplication) {
     let pid = application.processIdentifier
     let appName = application.localizedName ?? "Unknown"
@@ -96,7 +144,7 @@ struct WindowRestorer {
     }
 
     let configuration = NSWorkspace.OpenConfiguration()
-    configuration.activates = false
+    configuration.activates = true
     configuration.createsNewApplicationInstance = false
     configuration.addsToRecentItems = false
 
@@ -175,6 +223,10 @@ struct WindowRestorer {
   }
 
   private func windowAttribute(_ element: AXUIElement, _ attribute: CFString) -> AXUIElement? {
+    elementAttribute(element, attribute)
+  }
+
+  private func elementAttribute(_ element: AXUIElement, _ attribute: CFString) -> AXUIElement? {
     guard let value = copyAttribute(element, attribute),
           CFGetTypeID(value) == AXUIElementGetTypeID()
     else {
@@ -193,5 +245,9 @@ struct WindowRestorer {
       return nil
     }
     return value
+  }
+
+  private func stringAttribute(_ element: AXUIElement, _ attribute: CFString) -> String? {
+    copyAttribute(element, attribute) as? String
   }
 }
