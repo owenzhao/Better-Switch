@@ -1,9 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>Better Switch Updates</title>
-    <link>https://github.com/owenzhao/Better-Switch</link>
-    <description>Better Switch update feed</description>
-    <language>en</language>
-  </channel>
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Better Switch</title>
+        <item>
+            <title>0.2.0</title>
+            <pubDate>Sat, 19 Sep 2026 10:18:35 +0800</pubDate>
+            <link>https://github.com/owenzhao/Better-Switch</link>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/owenzhao/Better-Switch/releases/download/v0.2.0/Better-Switch-0.2.0.zip" length="1779042" type="application/octet-stream" sparkle:edSignature="CvpN1PHgVjO5Lc3fWAKumndCYOTgn9Fz3q68AIMZgTZfMJ1Sp0RutDkrR6dB2avJwNvj5o4YRoaV99B8NjHdBg=="/>
+        </item>
+    </channel>
 </rss>
