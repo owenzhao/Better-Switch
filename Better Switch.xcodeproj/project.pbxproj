@@ -63,6 +63,7 @@
 				B50000000000000000000008 /* Sources */,
 				B50000000000000000000003 /* Frameworks */,
 				B50000000000000000000009 /* Resources */,
+				B50000000000000000000013 /* Sign Sparkle nested code */,
 			);
 			buildRules = (
 			);
@@ -137,6 +138,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		B50000000000000000000013 /* Sign Sparkle nested code */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "Sign Sparkle nested code";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CODE_SIGNING_ALLOWED:-NO}\" != \"YES\" ] || [ -z \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n    exit 0\nfi\n\nSPARKLE_ROOT=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework/Versions/Current\"\nsign() {\n    /usr/bin/codesign --force --options runtime --timestamp --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" \"$1\"\n}\n\nsign \"${SPARKLE_ROOT}/XPCServices/Downloader.xpc/Contents/MacOS/Downloader\"\nsign \"${SPARKLE_ROOT}/XPCServices/Downloader.xpc\"\nsign \"${SPARKLE_ROOT}/XPCServices/Installer.xpc/Contents/MacOS/Installer\"\nsign \"${SPARKLE_ROOT}/XPCServices/Installer.xpc\"\nsign \"${SPARKLE_ROOT}/Updater.app/Contents/MacOS/Updater\"\nsign \"${SPARKLE_ROOT}/Updater.app\"\nsign \"${SPARKLE_ROOT}/Autoupdate\"\nsign \"${SPARKLE_ROOT}/Sparkle\"\nsign \"${SPARKLE_ROOT}\"\nsign \"${CODESIGNING_FOLDER_PATH}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		B50000000000000000000012 /* Sparkle */ = {
