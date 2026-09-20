@@ -3,13 +3,13 @@
     <channel>
         <title>Better Switch</title>
         <item>
-            <title>0.2.0</title>
-            <pubDate>Sat, 19 Sep 2026 10:49:33 +0800</pubDate>
+            <title>0.2.1</title>
+            <pubDate>Sun, 20 Sep 2026 14:24:10 +0800</pubDate>
             <link>https://github.com/owenzhao/Better-Switch</link>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>0.2.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/owenzhao/Better-Switch/releases/download/v0.2.0/Better-Switch-0.2.0.zip" length="1841556" type="application/octet-stream" sparkle:edSignature="PotE8rXNgHuurNdlq++ArjbNd+EyGBXpZj7ZePTmjhDmLPUvIK/vV4sHYu1fTN6po1/QDOm6QvDPSlHGfuW8DQ=="/>
+            <enclosure url="https://github.com/owenzhao/Better-Switch/releases/download/v0.2.1/Better-Switch-0.2.1.zip" length="1841083" type="application/octet-stream" sparkle:edSignature="k69r0B3IQDUDOramRAvr7lFvo2iAPQ7IjbAKOwoqBSb34+JUYPyO9+TBXpsqfYda2dabog3I9kvk0OS370AKAg=="/>
         </item>
     </channel>
 </rss>

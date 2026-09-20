@@ -21,6 +21,11 @@ When the activated app has no visible window, Better Switch restores and raises 
 
 The menu bar item also lets you temporarily disable the behavior and enable launch at login.
 
+## What's New in 0.2.1
+
+- Fixes the Sparkle signing build phase for current Xcode versions.
+- Keeps Sparkle's nested components correctly signed without interfering with Xcode's final app signing.
+
 ## What's New in 0.2.0
 
 - Restores special windows exposed through an app's **Window** menu before falling back to reopening the app.
