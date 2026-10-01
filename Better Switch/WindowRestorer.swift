@@ -16,7 +16,7 @@ struct WindowRestorer {
 
     let appElement = AXUIElementCreateApplication(pid)
     guard let windows = copyAttribute(appElement, kAXWindowsAttribute as CFString) as? [AXUIElement] else {
-      restoreFromWindowMenuOrReopen(application, appElement: appElement)
+      restoreFromWindowMenuOrReopen(application, appElement: appElement, canReopen: false)
       return
     }
 
@@ -27,14 +27,14 @@ struct WindowRestorer {
 
     let candidateWindows = windows.filter(isWindow)
     guard !candidateWindows.isEmpty else {
-      restoreFromWindowMenuOrReopen(application, appElement: appElement)
+      restoreFromWindowMenuOrReopen(application, appElement: appElement, canReopen: false)
       return
     }
 
     var minimizedWindows: [AXUIElement] = []
     for window in candidateWindows {
       guard let isMinimized = boolAttribute(window, kAXMinimizedAttribute as CFString) else {
-        restoreFromWindowMenuOrReopen(application, appElement: appElement)
+        restoreFromWindowMenuOrReopen(application, appElement: appElement, canReopen: false)
         return
       }
       guard isMinimized else {
@@ -84,9 +84,15 @@ struct WindowRestorer {
 
   private func restoreFromWindowMenuOrReopen(
     _ application: NSRunningApplication,
-    appElement: AXUIElement
+    appElement: AXUIElement,
+    canReopen: Bool = true
   ) {
     if restoreFromWindowMenu(appElement, appName: application.localizedName ?? "Unknown") {
+      return
+    }
+    // Only a successfully read, empty AX window list justifies creating a window.
+    guard canReopen else {
+      logger.info("Skipping reopen for \(application.localizedName ?? "Unknown", privacy: .public): AX window state is uncertain")
       return
     }
     reopen(application)
@@ -134,8 +140,17 @@ struct WindowRestorer {
     let pid = application.processIdentifier
     let appName = application.localizedName ?? "Unknown"
 
+    guard application.isFinishedLaunching else {
+      logger.info("Skipping reopen for \(appName, privacy: .public): application is still launching")
+      return
+    }
     guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
       logger.info("Skipping reopen for \(appName, privacy: .public): no longer frontmost")
+      return
+    }
+    // A window may have appeared while the AX window/menu queries were in progress.
+    guard !hasOnscreenWindow(for: pid) else {
+      logger.info("Skipping reopen for \(appName, privacy: .public): a window appeared")
       return
     }
     guard let bundleURL = application.bundleURL else {

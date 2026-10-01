@@ -272,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
       let currentAppName = currentApplication.localizedName ?? appName
       self.logger.info(
-        "Activated: \(currentAppName, privacy: .public) pid=\(currentApplication.processIdentifier, privacy: .public)"
+        "Activated: \(currentAppName, privacy: .public) pid=\(currentApplication.processIdentifier, privacy: .public) finishedLaunching=\(currentApplication.isFinishedLaunching, privacy: .public)"
       )
       self.windowRestorer.restoreWindowIfNeeded(for: currentApplication)
     }

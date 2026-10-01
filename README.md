@@ -21,6 +21,12 @@ When the activated app has no visible window, Better Switch restores and raises 
 
 The menu bar item also lets you temporarily disable the behavior and enable launch at login.
 
+## What's New in 0.2.2
+
+- Fixes extra Brave Browser windows appearing during a cold launch while Better Switch is running.
+- Requests reopening only when the app has finished launching and its window list is confirmed empty.
+- Preserves existing minimized-window and Window-menu restoration.
+
 ## What's New in 0.2.1
 
 - Fixes the Sparkle signing build phase for current Xcode versions.

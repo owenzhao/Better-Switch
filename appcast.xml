@@ -3,6 +3,22 @@
     <channel>
         <title>Better Switch</title>
         <item>
+            <title>0.2.2</title>
+            <pubDate>Thu, 01 Oct 2026 11:34:22 +0800</pubDate>
+            <link>https://github.com/owenzhao/Better-Switch</link>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>0.2.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<p>Fixes extra Brave Browser windows appearing during a cold launch while Better Switch is running.</p>
+<ul>
+<li>Avoids reopening when Accessibility window information is unavailable or the app is still launching.</li>
+<li>Rechecks visible windows before reopening.</li>
+<li>Preserves minimized-window and Window-menu restoration.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/owenzhao/Better-Switch/releases/download/v0.2.2/Better-Switch-0.2.2.zip" length="1847714" type="application/octet-stream" sparkle:edSignature="lCny4sRMFeXnT8BJrQ93pMDJh5F7OCkkGdVl5oF6XU24UyAYngR2SHuERFQOdFP+/g27JkKW8NJx9L4LE4oEBw=="/>
+        </item>
+        <item>
             <title>0.2.1</title>
             <pubDate>Sun, 20 Sep 2026 14:24:10 +0800</pubDate>
             <link>https://github.com/owenzhao/Better-Switch</link>
