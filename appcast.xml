@@ -3,6 +3,24 @@
     <channel>
         <title>Better Switch</title>
         <item>
+            <title>0.3.0</title>
+            <pubDate>Sun, 04 Oct 2026 19:28:43 +0800</pubDate>
+            <link>https://github.com/owenzhao/Better-Switch</link>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<p>Shake a window's title bar to focus on that window.</p>
+<ul>
+<li>Minimizes other windows, with automatic app hiding when minimization is unavailable.</li>
+<li>Shakes again to restore the changed windows and bring the shaken window forward.</li>
+<li>Supports continuous shaking while holding the title bar, with a 1.2-second cooldown between actions.</li>
+<li>Adds Restore Shaken Windows to the menu bar.</li>
+</ul>
+<p>The shaken window's own app is never hidden. Hiding another app can also hide its windows on other desktops.</p>
+]]></description>
+            <enclosure url="https://github.com/owenzhao/Better-Switch/releases/download/v0.3.0/Better-Switch-0.3.0.zip" length="1884258" type="application/octet-stream" sparkle:edSignature="Zx4GyxcivW0oFq5zGDcyZrfEnMavIUvRyNwg7A//rLM2DwtKc4snmLbZ+5YPUwl7bUiW47Kqq1u8ueSd+CubDQ=="/>
+        </item>
+        <item>
             <title>0.2.2</title>
             <pubDate>Thu, 01 Oct 2026 11:34:22 +0800</pubDate>
             <link>https://github.com/owenzhao/Better-Switch</link>

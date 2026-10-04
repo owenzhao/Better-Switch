@@ -33,6 +33,13 @@ You can keep holding the title bar throughout: after each action there is a 1.2-
 
 If visible windows cannot be matched safely to their Accessibility objects, Better Switch uses the hide fallback for other apps. Ambiguous windows belonging to the shaken window's own app are left alone.
 
+## What's New in 0.3.0
+
+- Shake a window's title bar to minimize other apps' windows, with automatic app hiding when minimization is unavailable.
+- Shake again to restore the changed windows and bring the shaken window forward.
+- Keep holding the title bar between actions; a 1.2-second cooldown prevents immediate toggling.
+- Restore the changed windows from the menu bar with **Restore Shaken Windows**.
+
 ## What's New in 0.2.2
 
 - Fixes extra Brave Browser windows appearing during a cold launch while Better Switch is running.
