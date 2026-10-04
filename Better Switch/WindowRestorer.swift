@@ -5,6 +5,266 @@ import OSLog
 struct WindowRestorer {
   private let logger = Logger(subsystem: "com.parussoft.Better-Switch", category: "WindowRestore")
 
+  static func isShake(
+    _ samples: [(time: TimeInterval, x: CGFloat)], notBefore readyAt: TimeInterval = 0
+  ) -> Bool {
+    guard let latest = samples.last else { return false }
+    let positions = samples.filter { $0.time >= readyAt && latest.time - $0.time <= 1 }.map(\.x)
+    guard let first = positions.first else { return false }
+    var extreme = first
+    var direction = 0
+    var reversals = 0
+
+    for x in positions.dropFirst() {
+      let delta = x - extreme
+      if direction == 0 {
+        guard abs(delta) >= 30 else { continue }
+        direction = delta > 0 ? 1 : -1
+        extreme = x
+      } else if delta * CGFloat(direction) > 0 {
+        extreme = x
+      } else if abs(delta) >= 30 {
+        direction = -direction
+        extreme = x
+        reversals += 1
+        if reversals >= 3 { return true }
+      }
+    }
+    return false
+  }
+
+  func window(at point: CGPoint) -> AXUIElement? {
+    var hit: AXUIElement?
+    guard AXUIElementCopyElementAtPosition(
+      AXUIElementCreateSystemWide(), Float(point.x), Float(point.y), &hit
+    ) == .success, let hit else { return nil }
+
+    AXUIElementSetMessagingTimeout(hit, 0.2)
+    let window = isWindow(hit) ? hit : elementAttribute(hit, kAXWindowAttribute as CFString)
+    guard let window, isStandardWindow(window) else { return nil }
+    AXUIElementSetMessagingTimeout(window, 0.2)
+    return window
+  }
+
+  func bounds(of window: AXUIElement) -> CGRect? {
+    guard let position = copyAttribute(window, kAXPositionAttribute as CFString),
+          CFGetTypeID(position) == AXValueGetTypeID(),
+          let size = copyAttribute(window, kAXSizeAttribute as CFString),
+          CFGetTypeID(size) == AXValueGetTypeID()
+    else { return nil }
+    var point = CGPoint.zero
+    var dimensions = CGSize.zero
+    guard AXValueGetValue(unsafeBitCast(position, to: AXValue.self), .cgPoint, &point),
+          AXValueGetValue(unsafeBitCast(size, to: AXValue.self), .cgSize, &dimensions)
+    else { return nil }
+    return CGRect(origin: point, size: dimensions)
+  }
+
+  func isFrontmostWindow(_ window: AXUIElement) -> Bool {
+    var pid: pid_t = 0
+    guard AXUIElementGetPid(window, &pid) == .success,
+          NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
+          let focused = elementAttribute(
+            AXUIElementCreateApplication(pid), kAXFocusedWindowAttribute as CFString
+          )
+    else { return false }
+    return CFEqual(window, focused)
+  }
+
+  func focusWindow(
+    _ selectedWindow: AXUIElement
+  ) -> (hiddenApplications: [NSRunningApplication], minimizedWindows: [AXUIElement]) {
+    var hiddenApplications: [NSRunningApplication] = []
+    var minimizedWindows: [AXUIElement] = []
+    var selectedPID: pid_t = 0
+    guard AXUIElementGetPid(selectedWindow, &selectedPID) == .success,
+          isFrontmostWindow(selectedWindow), isStandardWindow(selectedWindow),
+          let visibleInfo = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+          ) as? [[String: Any]]
+    else { return (hiddenApplications, minimizedWindows) }
+
+    // Match AX frames against public WindowServer metadata. No window titles or screen capture needed.
+    let visibleBounds = Self.visibleWindowBounds(visibleInfo)
+
+    for application in NSWorkspace.shared.runningApplications {
+      let pid = application.processIdentifier
+      guard pid != ProcessInfo.processInfo.processIdentifier,
+            application.activationPolicy != .prohibited, !application.isHidden,
+            let frames = visibleBounds[pid]
+      else { continue }
+      let appElement = AXUIElementCreateApplication(pid)
+      AXUIElementSetMessagingTimeout(appElement, 0.5)
+      guard let windows = copyAttribute(appElement, kAXWindowsAttribute as CFString) as? [AXUIElement],
+            !windows.isEmpty
+      else {
+        if pid != selectedPID,
+           NSWorkspace.shared.frontmostApplication?.processIdentifier == selectedPID,
+           setHidden(true, for: application) {
+          hiddenApplications.append(application)
+        }
+        continue
+      }
+
+      let windowFrames = windows.compactMap { window -> (window: AXUIElement, frame: CGRect)? in
+        // On-screen metadata decides visibility. AXMinimized can lag behind a restore.
+        guard isStandardWindow(window), let frame = bounds(of: window) else { return nil }
+        return (window, frame)
+      }
+      let candidates = windowFrames.filter { candidate in
+        guard !CFEqual(candidate.window, selectedWindow) else { return false }
+        let visibleCount = frames.filter { Self.framesMatch($0, candidate.frame) }.count
+        guard visibleCount > 0 else { return false }
+        return windowFrames.filter { Self.framesMatch($0.frame, candidate.frame) }.count <= visibleCount
+      }
+      logger.info("Shake candidates: pid=\(pid, privacy: .public) visible=\(frames.count, privacy: .public) AX=\(windows.count, privacy: .public) matched=\(candidates.count, privacy: .public)")
+      guard NSWorkspace.shared.frontmostApplication?.processIdentifier == selectedPID else { break }
+
+      // If visible windows cannot be matched safely, use the app-level fallback.
+      var needsHide = candidates.isEmpty
+      for candidate in candidates {
+        let window = candidate.window
+        if let button = elementAttribute(window, kAXMinimizeButtonAttribute as CFString),
+           boolAttribute(button, kAXEnabledAttribute as CFString) == false {
+          needsHide = true
+          continue
+        }
+        var settable = DarwinBoolean(false)
+        guard AXUIElementIsAttributeSettable(
+          window, kAXMinimizedAttribute as CFString, &settable
+        ) == .success, settable.boolValue else {
+          needsHide = true
+          continue
+        }
+        let result = AXUIElementSetAttributeValue(
+          window, kAXMinimizedAttribute as CFString, kCFBooleanTrue
+        )
+        if result == .success {
+          // Success acknowledges the request; animations and AX state updates are asynchronous.
+          minimizedWindows.append(window)
+        } else {
+          needsHide = true
+          logger.info("Minimize request failed: pid=\(pid, privacy: .public) AX=\(result.rawValue, privacy: .public)")
+        }
+      }
+      if needsHide && pid != selectedPID,
+         NSWorkspace.shared.frontmostApplication?.processIdentifier == selectedPID,
+         setHidden(true, for: application) {
+        hiddenApplications.append(application)
+      }
+    }
+    logger.info("Shake focus requested: hidden apps=\(hiddenApplications.count, privacy: .public), minimized windows=\(minimizedWindows.count, privacy: .public)")
+    return (hiddenApplications, minimizedWindows)
+  }
+
+  static func visibleWindowBounds(_ visibleInfo: [[String: Any]]) -> [pid_t: [CGRect]] {
+    var visibleBounds: [pid_t: [CGRect]] = [:]
+    for info in visibleInfo {
+      guard let pid = (info[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
+            (info[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+            (info[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue != false,
+            (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 0 > 0,
+            let dictionary = info[kCGWindowBounds as String] as? NSDictionary
+      else { continue }
+      var frame = CGRect.zero
+      guard CGRectMakeWithDictionaryRepresentation(dictionary, &frame),
+            frame.width > 0, frame.height > 0
+      else { continue }
+      visibleBounds[pid, default: []].append(frame)
+    }
+
+    return visibleBounds
+  }
+
+  func confirmWindowFocus(
+    keeping selectedWindow: AXUIElement, minimizedWindows: [AXUIElement],
+    hiddenApplications: [NSRunningApplication]
+  ) -> [NSRunningApplication] {
+    var selectedPID: pid_t = 0
+    guard AXUIElementGetPid(selectedWindow, &selectedPID) == .success,
+          isFrontmostWindow(selectedWindow),
+          let info = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+          ) as? [[String: Any]]
+    else { return [] }
+    let visibleBounds = Self.visibleWindowBounds(info)
+    let alreadyHiddenPIDs = Set(hiddenApplications.map(\.processIdentifier))
+    var pids = alreadyHiddenPIDs
+    for window in minimizedWindows {
+      var pid: pid_t = 0
+      if AXUIElementGetPid(window, &pid) == .success { pids.insert(pid) }
+    }
+    var newlyHidden: [NSRunningApplication] = []
+    for pid in pids {
+      guard pid != selectedPID, visibleBounds[pid] != nil,
+            let application = NSRunningApplication(processIdentifier: pid), !application.isTerminated
+      else { continue }
+      // A successful AX request can still leave a non-miniaturizable window on screen.
+      logger.info("Windows remain after minimize: pid=\(pid, privacy: .public); hiding app")
+      if setHidden(true, for: application), !alreadyHiddenPIDs.contains(pid) {
+        newlyHidden.append(application)
+      }
+    }
+    return newlyHidden
+  }
+
+  private func setHidden(_ hidden: Bool, for application: NSRunningApplication) -> Bool {
+    let appElement = AXUIElementCreateApplication(application.processIdentifier)
+    AXUIElementSetMessagingTimeout(appElement, 0.5)
+    let result = AXUIElementSetAttributeValue(
+      appElement, kAXHiddenAttribute as CFString, hidden ? kCFBooleanTrue : kCFBooleanFalse
+    )
+    if result == .success { return true }
+    let sent = hidden ? application.hide() : application.unhide()
+    if !sent {
+      logger.error("Could not change app visibility: pid=\(application.processIdentifier, privacy: .public) hidden=\(hidden, privacy: .public) AX=\(result.rawValue, privacy: .public)")
+    }
+    return sent
+  }
+
+  private static func framesMatch(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
+    abs(lhs.minX - rhs.minX) < 2 && abs(lhs.minY - rhs.minY) < 2
+      && abs(lhs.width - rhs.width) < 2 && abs(lhs.height - rhs.height) < 2
+  }
+
+  func raiseWindow(_ window: AXUIElement) {
+    var pid: pid_t = 0
+    guard AXUIElementGetPid(window, &pid) == .success, isWindow(window),
+          boolAttribute(window, kAXMinimizedAttribute as CFString) != true,
+          let application = NSRunningApplication(processIdentifier: pid), !application.isTerminated
+    else { return }
+    let appElement = AXUIElementCreateApplication(pid)
+    AXUIElementSetAttributeValue(window, kAXMainAttribute as CFString, kCFBooleanTrue)
+    AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, window)
+    application.activate(options: [])
+    let result = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    if result != .success {
+      logger.error("Could not raise shaken window: AX error \(result.rawValue, privacy: .public)")
+    }
+  }
+
+  func restoreShakenWindows(
+    hiddenApplications: [NSRunningApplication], minimizedWindows: [AXUIElement]
+  ) {
+    for application in hiddenApplications where !application.isTerminated {
+      _ = setHidden(false, for: application)
+    }
+    for window in minimizedWindows {
+      let result = AXUIElementSetAttributeValue(
+        window, kAXMinimizedAttribute as CFString, kCFBooleanFalse
+      )
+      if result != .success {
+        logger.error("Could not restore shaken window: AX error \(result.rawValue, privacy: .public)")
+      }
+    }
+  }
+
+  private func isStandardWindow(_ window: AXUIElement) -> Bool {
+    isWindow(window)
+      && stringAttribute(window, kAXSubroleAttribute as CFString) == kAXStandardWindowSubrole as String
+      && boolAttribute(window, "AXFullScreen" as CFString) != true
+  }
+
   func restoreWindowIfNeeded(for application: NSRunningApplication) {
     let pid = application.processIdentifier
     let appName = application.localizedName ?? "Unknown"

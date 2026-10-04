@@ -4,8 +4,9 @@ import OSLog
 import ServiceManagement
 @preconcurrency import Sparkle
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemValidation {
   private static let enabledKey = "betterSwitchEnabled"
+  private static let shakeCooldown: TimeInterval = 1.2
 
   private let logger = Logger(subsystem: "com.parussoft.Better-Switch", category: "App")
   private let windowRestorer = WindowRestorer()
@@ -17,12 +18,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   private var statusItem: NSStatusItem!
   private var enabledItem: NSMenuItem!
+  private var restoreShakeItem: NSMenuItem!
   private var launchAtLoginItem: NSMenuItem!
   private var accessibilityItem: NSMenuItem!
   private var grantAccessibilityItem: NSMenuItem!
   private var workspaceObserver: NSObjectProtocol?
   private var pendingActivationCheck: DispatchWorkItem?
   private var isEnabled = true
+  private var pendingFocusChecks: [DispatchWorkItem] = []
+  private var pendingFocusConfirmation: DispatchWorkItem?
+  private var windowAwaitingConfirmation: AXUIElement?
+  private var mouseMonitor: Any?
+  private var draggedWindow: AXUIElement?
+  private var draggedWindowSize = CGSize.zero
+  private var shakeSamples: [(time: TimeInterval, x: CGFloat)] = []
+  private var shakeReadyAt: TimeInterval = 0
+  private var hiddenApplications: [NSRunningApplication] = []
+  private var minimizedWindows: [AXUIElement] = []
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     UserDefaults.standard.register(defaults: [Self.enabledKey: true])
@@ -30,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     configureStatusItem()
     observeApplicationActivation()
+    observeMouseDragging()
     logger.info("Better Switch started. Enabled: \(self.isEnabled, privacy: .public)")
 
     if !AXIsProcessTrusted() {
@@ -39,6 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   func applicationWillTerminate(_ notification: Notification) {
     pendingActivationCheck?.cancel()
+    cancelFocusChecks()
+    if let mouseMonitor {
+      NSEvent.removeMonitor(mouseMonitor)
+    }
+    restoreShakenWindows()
     if let workspaceObserver {
       NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
     }
@@ -84,6 +102,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
       keyEquivalent: ""
     )
     enabledItem.target = self
+
+    restoreShakeItem = menu.addItem(
+      withTitle: "Restore Shaken Windows", action: #selector(restoreShakenWindows), keyEquivalent: ""
+    )
+    restoreShakeItem.target = self
 
     launchAtLoginItem = menu.addItem(
       withTitle: "Launch at Login",
@@ -131,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   private func refreshMenu() {
     enabledItem.state = isEnabled ? .on : .off
+    restoreShakeItem.isEnabled = !hiddenApplications.isEmpty || !minimizedWindows.isEmpty
 
     switch SMAppService.mainApp.status {
     case .enabled:
@@ -160,9 +184,160 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     if !isEnabled {
       pendingActivationCheck?.cancel()
       pendingActivationCheck = nil
+      cancelFocusChecks()
+      resetShakeDrag()
+      restoreShakenWindows()
     }
     refreshMenu()
     logger.info("Enabled changed to \(self.isEnabled, privacy: .public)")
+  }
+
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    if menuItem === restoreShakeItem {
+      return !hiddenApplications.isEmpty || !minimizedWindows.isEmpty
+    }
+    return true
+  }
+
+  @objc private func restoreShakenWindows() {
+    cancelFocusChecks()
+    pendingFocusConfirmation?.cancel()
+    pendingFocusConfirmation = nil
+    windowAwaitingConfirmation = nil
+    windowRestorer.restoreShakenWindows(
+      hiddenApplications: hiddenApplications, minimizedWindows: minimizedWindows
+    )
+    hiddenApplications.removeAll()
+    minimizedWindows.removeAll()
+    if restoreShakeItem != nil {
+      refreshMenu()
+    }
+  }
+
+  private func observeMouseDragging() {
+    mouseMonitor = NSEvent.addGlobalMonitorForEvents(
+      matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
+    ) { [weak self] event in
+      self?.handleShakeDrag(event)
+    }
+  }
+
+  private func resetShakeDrag() {
+    draggedWindow = nil
+    shakeSamples.removeAll()
+  }
+
+  private func cancelFocusChecks() {
+    pendingFocusChecks.forEach { $0.cancel() }
+    pendingFocusChecks.removeAll()
+  }
+
+  private func keepRestoredWindowInFront(_ window: AXUIElement) {
+    cancelFocusChecks()
+    windowRestorer.raiseWindow(window)
+    var pid: pid_t = 0
+    guard AXUIElementGetPid(window, &pid) == .success else { return }
+    // Other windows can finish their restore animation after the AX call returns.
+    for delay in [0.2, 0.5, 1.0] {
+      let check = DispatchWorkItem { [weak self] in
+        guard let self, self.isEnabled,
+              NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
+        else { return }
+        self.windowRestorer.raiseWindow(window)
+      }
+      pendingFocusChecks.append(check)
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: check)
+    }
+  }
+
+  private func scheduleFocusConfirmation() {
+    guard let window = windowAwaitingConfirmation else { return }
+    pendingFocusConfirmation?.cancel()
+    let check = DispatchWorkItem { [weak self] in
+      guard let self else { return }
+      self.pendingFocusConfirmation = nil
+      // Confirm after the animation delay even if the same title-bar drag continues.
+      self.windowAwaitingConfirmation = nil
+      let newlyHidden = self.windowRestorer.confirmWindowFocus(
+        keeping: window, minimizedWindows: self.minimizedWindows,
+        hiddenApplications: self.hiddenApplications
+      )
+      self.hiddenApplications.append(contentsOf: newlyHidden)
+      if !newlyHidden.isEmpty {
+        // A deferred hide is part of the same action; start its cooldown after it finishes.
+        self.shakeSamples.removeAll()
+        self.shakeReadyAt = ProcessInfo.processInfo.systemUptime + Self.shakeCooldown
+      }
+      self.refreshMenu()
+    }
+    pendingFocusConfirmation = check
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: check)
+  }
+
+  private func handleShakeDrag(_ event: NSEvent) {
+    if event.type == .leftMouseDown {
+      cancelFocusChecks()
+      pendingFocusConfirmation?.cancel()
+      pendingFocusConfirmation = nil
+      windowAwaitingConfirmation = nil
+    } else if event.type == .leftMouseUp {
+      scheduleFocusConfirmation()
+    }
+    guard isEnabled, AXIsProcessTrusted(), event.type != .leftMouseUp else {
+      resetShakeDrag()
+      return
+    }
+
+    if event.type == .leftMouseDown {
+      resetShakeDrag()
+      // CGEvent and Accessibility both use a top-left origin, including on other displays.
+      guard let point = event.cgEvent?.location,
+            let window = windowRestorer.window(at: point),
+            let bounds = windowRestorer.bounds(of: window)
+      else { return }
+      draggedWindow = window
+      draggedWindowSize = bounds.size
+      if event.timestamp >= shakeReadyAt {
+        shakeSamples = [(event.timestamp, bounds.minX)]
+      }
+      return
+    }
+
+    // Ignore queued drag events and animation-related focus changes during the cooldown.
+    guard event.timestamp >= shakeReadyAt else { return }
+    // AX queries cross process boundaries; sample at most about 30 times per second.
+    if let last = shakeSamples.last, event.timestamp - last.time < 0.03 { return }
+    guard let window = draggedWindow,
+          let bounds = windowRestorer.bounds(of: window),
+          abs(bounds.width - draggedWindowSize.width) < 1,
+          abs(bounds.height - draggedWindowSize.height) < 1,
+          windowRestorer.isFrontmostWindow(window)
+    else {
+      resetShakeDrag()
+      return
+    }
+
+    // Measure the window itself: dragging content or resizing must not trigger a shake.
+    shakeSamples.append((event.timestamp, bounds.minX))
+    shakeSamples.removeAll { event.timestamp - $0.time > 1 }
+    guard WindowRestorer.isShake(shakeSamples, notBefore: shakeReadyAt) else { return }
+
+    // Keep tracking the held window, but require a fresh shake for the next action.
+    shakeSamples.removeAll()
+    pendingActivationCheck?.cancel()
+    if !hiddenApplications.isEmpty || !minimizedWindows.isEmpty {
+      restoreShakenWindows()
+      keepRestoredWindowInFront(window)
+    } else {
+      let result = windowRestorer.focusWindow(window)
+      hiddenApplications = result.hiddenApplications
+      minimizedWindows = result.minimizedWindows
+      windowAwaitingConfirmation = window
+      scheduleFocusConfirmation()
+      refreshMenu()
+    }
+    // Start the cooldown when synchronous window operations finish, not at gesture detection.
+    shakeReadyAt = ProcessInfo.processInfo.systemUptime + Self.shakeCooldown
   }
 
   @objc private func toggleLaunchAtLogin() {
