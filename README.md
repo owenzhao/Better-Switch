@@ -33,6 +33,11 @@ You can keep holding the title bar throughout: after each action there is a 1.2-
 
 If visible windows cannot be matched safely to their Accessibility objects, Better Switch uses the hide fallback for other apps. Ambiguous windows belonging to the shaken window's own app are left alone.
 
+## What's New in 0.3.1
+
+- Fixes switching to Finder with `⌘Tab` not opening a window.
+- Finder lists its desktop instead of an empty window list, so Better Switch treated the state as uncertain and skipped reopening. A successfully read window list without a window now counts as an app with no windows.
+
 ## What's New in 0.3.0
 
 - Shake a window's title bar to minimize other apps' windows, with automatic app hiding when minimization is unavailable.

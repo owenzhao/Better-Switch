@@ -3,6 +3,21 @@
     <channel>
         <title>Better Switch</title>
         <item>
+            <title>0.3.1</title>
+            <pubDate>Mon, 26 Oct 2026 08:11:00 +0800</pubDate>
+            <link>https://github.com/owenzhao/Better-Switch</link>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<p>Fixes switching to Finder with <code>⌘Tab</code> not opening a window.</p>
+<ul>
+<li>Finder reports its desktop instead of an empty window list, so Better Switch treated the state as uncertain and skipped reopening.</li>
+<li>A successfully read window list without a window now counts as an app with no windows.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/owenzhao/Better-Switch/releases/download/v0.3.1/Better-Switch-0.3.1.zip" length="1906785" type="application/octet-stream" sparkle:edSignature="usXUduW3uAJagUoiKQsAocoYaR6/YxvFr6ZYXRgW+Wtxbl25ALkgd6ySDDJHYQz2rvxQSjWvFlCMLy4ffKQEDQ=="/>
+        </item>
+        <item>
             <title>0.3.0</title>
             <pubDate>Sun, 04 Oct 2026 19:28:43 +0800</pubDate>
             <link>https://github.com/owenzhao/Better-Switch</link>
