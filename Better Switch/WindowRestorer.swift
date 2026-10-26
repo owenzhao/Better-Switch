@@ -285,9 +285,14 @@ struct WindowRestorer {
       return
     }
 
+    // The list read succeeded, so anything that is not a window means the app has no window.
+    // Finder lists its desktop here instead of returning an empty list.
     let candidateWindows = windows.filter(isWindow)
     guard !candidateWindows.isEmpty else {
-      restoreFromWindowMenuOrReopen(application, appElement: appElement, canReopen: false)
+      logger.info(
+        "AX window list holds no window for \(appName, privacy: .public); other elements=\(windows.count, privacy: .public)"
+      )
+      restoreFromWindowMenuOrReopen(application, appElement: appElement)
       return
     }
 
